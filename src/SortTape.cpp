@@ -112,13 +112,18 @@ void SortTape::Sort() {
     bool forward = false;
     for (size_t i = 0; i < output_tape_.GetSize(); ++i) {
         prev = output_tape_.Read();
+        bool is_sorted = true;
         for (size_t j = 1; j < output_tape_.GetSize(); ++j) {
             output_tape_.ForwardBy(forward);
             curr = output_tape_.Read();
             if (curr < prev && forward || curr > prev && !forward) {
                 SwapBy(forward);
+                is_sorted = false;
             }
             prev = curr;
+        }
+        if (is_sorted) {
+            break;
         }
         forward = (1 + forward) % 2;
     }

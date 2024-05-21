@@ -8,7 +8,7 @@ void ToBinary(const std::filesystem::path &path, const std::filesystem::path &bi
     std::ofstream ofstream(binary, std::ios::out | std::ios::binary);
     int32_t curr;
     if (!ifstream.is_open()) {
-        throw std::runtime_error("No such input file: " + path.string());
+        throw std::ios::failure("No such input file: " + path.string());
     }
     while (ifstream >> curr) {
         ofstream.write(reinterpret_cast<char *>(&curr), kIntSize);
@@ -71,7 +71,7 @@ FileTape::FileTape(const std::filesystem::path &path, size_t read_delay,
     }
     file_tape_ = std::fstream(path, std::ios::ate | std::ios::binary | std::ios::in);
     if (!file_tape_.is_open()) {
-        throw std::runtime_error("file cannot be opened: " + path.string());
+        throw std::ios::failure("file cannot be opened: " + path.string());
     }
     tape_size_ = file_tape_.tellg() / kIntSize;
     file_tape_.seekg(std::ios::beg);

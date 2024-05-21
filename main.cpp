@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <tuple>
 
 #include "lib/SortTape.h"
 
@@ -9,22 +10,23 @@ const std::string kExtension = "_binary.tape";
 void
 ReadArgs(int argc, char **argv, std::filesystem::path &in, std::filesystem::path &out, std::filesystem::path &cfg) {
     if (argc != 4) {
-        throw std::runtime_error("Wrong number of arguments, expected 4");
+        throw std::invalid_argument("Wrong number of arguments, expected 4");
     }
     in = argv[1];
     out = argv[2];
     cfg = argv[3];
 }
 
-void ReadConfig(const std::filesystem::path &path, size_t &read, size_t &write, size_t &move, size_t &rewind) {
+auto ReadConfig(const std::filesystem::path &path) {
     std::fstream config(path, std::ios::in);
     if (!config.is_open()) {
-        throw std::runtime_error("Cannot read config file");
+        throw std::ios::failure("Cannot read config file");
     }
-
+    size_t read, write, move, rewind;
     if (!(config >> read >> write >> move >> rewind)) {
-        throw std::runtime_error("Not enough params in config file, expected 4");
+        throw std::invalid_argument("Not enough params in config file, expected 4");
     }
+    return std::tuple(read, write, move, rewind);
 }
 
 std::filesystem::path GetBinaryPath(const std::filesystem::path& path) {
@@ -32,11 +34,10 @@ std::filesystem::path GetBinaryPath(const std::filesystem::path& path) {
 }
 
 int main(int argc, char **argv) {
-    size_t read_delay, write_delay, move_delay, rewind_delay;
     std::filesystem::path input_path, output_path, config;
 
     ReadArgs(argc, argv, input_path, output_path, config);
-    ReadConfig(config, read_delay, write_delay, move_delay, rewind_delay);
+    auto [read_delay, write_delay, move_delay, rewind_delay] = ReadConfig(config);
 
     std::filesystem::create_directory(kTempDir);
     std::filesystem::create_directories(output_path.parent_path());

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <vector>
 
 #include "TapeInterface.h"
 
@@ -49,9 +50,12 @@ private:
 class SortTape {
 public:
     SortTape(const std::filesystem::path &input_tape, const std::filesystem::path &output_tape, size_t read_delay,
-             size_t write_delay, size_t move_delay, size_t rewind_delay) :
+             size_t write_delay, size_t move_delay, size_t rewind_delay, size_t memory) :
             input_tape_(input_tape, read_delay, write_delay, move_delay, rewind_delay, true),
-            output_tape_(output_tape, read_delay, write_delay, move_delay, rewind_delay) {
+            output_tape_(output_tape, read_delay, write_delay, move_delay, rewind_delay),
+            max_memory_(memory),
+            current_chunk_(memory)
+            {
     }
 
     void Sort();
@@ -61,6 +65,8 @@ public:
 private:
     FileTape input_tape_;
     FileTape output_tape_;
+    size_t max_memory_;
+    std::vector<int32_t> current_chunk_;
 };
 
 

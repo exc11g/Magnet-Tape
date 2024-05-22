@@ -13,6 +13,7 @@ namespace {
 
     const std::filesystem::path kTestDir = "./__test/";
     constexpr auto kIntMax = std::numeric_limits<int32_t>::max();
+    constexpr auto kIntMin = std::numeric_limits<int32_t>::min();
 
     void Check(std::vector<int32_t> &v, size_t read = 1, size_t write = 1, size_t move = 1, size_t rewind = 1) {
         std::filesystem::create_directory(kTestDir);
@@ -55,13 +56,13 @@ namespace {
 
     TEST_CASE("RANDOM") {
         auto size = GENERATE(take(5, random(0, 10)));
-        auto v = chunk(size, random(-kIntMax, kIntMax)).get();
+        auto v = chunk(size, random(kIntMin, kIntMax)).get();
         Check(v);
     }
 
     TEST_CASE("READ DELAY") {
         auto size = GENERATE(take(10, random(0, 20)));
-        auto v = chunk(size, random(-kIntMax, kIntMax)).get();
+        auto v = chunk(size, random(kIntMin, kIntMax)).get();
         auto start = std::chrono::steady_clock::now();
         Check(v, 5);
         auto end = std::chrono::steady_clock::now();
@@ -70,7 +71,7 @@ namespace {
 
     TEST_CASE("ALL DELAYS") {
         auto size = GENERATE(take(10, random(0, 10)));
-        auto v = chunk(size, random(-kIntMax, kIntMax)).get();
+        auto v = chunk(size, random(kIntMin, kIntMax)).get();
         auto start = std::chrono::steady_clock::now();
         Check(v, 5, 10, 15, 20);
         auto end = std::chrono::steady_clock::now();

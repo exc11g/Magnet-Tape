@@ -10,16 +10,17 @@ SortTape::SortTape(const std::filesystem::path &input_tape, const std::filesyste
         input_tape_(input_tape, read_delay, write_delay, move_delay, rewind_delay, true),
         output_tape_(output_tape, read_delay, write_delay, move_delay, rewind_delay),
         max_memory_(std::min(memory, input_tape_.GetSize())),
-        current_chunk_(max_memory_) {
+        current_chunk_(max_memory_),
+        output_path_(output_tape) {
 }
 
 void SortTape::Sort() {
+    std::filesystem::create_directory(util::kTempDir);
     if (max_memory_ == 0) {
         SortWithoutMemory();
         return;
     }
     size_t input_size = input_tape_.GetSize();
-    output_tape_.Fill(input_size);
     size_t chunk_count = (input_size + max_memory_ - 1) / max_memory_;
     for (size_t i = 0; i < chunk_count; ++i) {
         auto size = std::min(max_memory_, input_size - i * max_memory_);
@@ -35,25 +36,11 @@ void SortTape::Sort() {
 }
 
 void SortTape::Merge() noexcept {
-    size_t input_size = input_tape_.GetSize();
-    size_t chunk_count = (input_size + max_memory_ - 1) / max_memory_;
-    if (chunk_count == 1) {
-        std::filesystem::copy_file(temp_tapes_[0].GetPath(), output_tape_.GetPath(),
-                                   std::filesystem::copy_options::overwrite_existing);
-        return;
-    }
-
-    auto first = MergeTapes(temp_tapes_[0], temp_tapes_[1], 1);
-    for (size_t i = 2; i < chunk_count; ++i) {
-        first = MergeTapes(first, temp_tapes_[i], i);
-    }
-
-    std::filesystem::copy_file(first.GetPath(), output_tape_.GetPath(),
+    std::filesystem::copy_file(output_tape_.GetPath(), output_path_,
                                std::filesystem::copy_options::overwrite_existing);
-    std::filesystem::remove_all(util::kTempDir);
 }
 
-FileTape SortTape::MergeTapes(FileTape &lhs, FileTape &rhs, size_t i) noexcept {
+FileTape SortTape::MergeTapes(FileTape &lhs, FileTape &&rhs, size_t i) noexcept {
     FileTape merged = FileTape::Create(util::kTempDir / ("merged_" + std::to_string(i) + util::kExtension), lhs,
                                        lhs.GetSize() + rhs.GetSize());
     int32_t left;
@@ -131,5 +118,5 @@ void SortTape::SaveCurrentChunk(auto& view, size_t i, size_t size) noexcept {
         temp_tape.Forward();
     }
     temp_tape.Rewind();
-    temp_tapes_.push_back(std::move(temp_tape));
+    output_tape_ = MergeTapes(output_tape_, std::move(temp_tape), i);
 }

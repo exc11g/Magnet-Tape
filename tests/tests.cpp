@@ -24,9 +24,9 @@ namespace {
         std::filesystem::create_directory(util::kTempDir);
         std::filesystem::create_directory(kTestDir);
         std::fstream stream(kTestDir / "input.txt", std::ios::out);
-        for (auto x: v) {
+        std::ranges::for_each(v, [&stream](auto x){
             stream << x << " ";
-        }
+        });
         stream.close();
         util::ToBinary(kTestDir / "input.txt", kTestDir / "input_binary.tape");
         {
@@ -95,5 +95,11 @@ namespace {
         auto size = GENERATE(take(10, random(0, 100)));
         auto v = chunk(size, random(kIntMin, kIntMax)).get();
         Check(v, 1, 1, 1, 1, 30);
+    }
+
+    TEST_CASE("WITHOUT MEMORY") {
+        auto size = GENERATE(take(10, random(0, 30)));
+        auto v = chunk(size, random(kIntMin, kIntMax)).get();
+        Check(v);
     }
 }

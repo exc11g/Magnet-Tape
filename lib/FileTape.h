@@ -27,11 +27,11 @@ public:
 
     void Back() noexcept override;
 
+    void Rewind() noexcept;
+
     size_t GetSize() const noexcept;
 
     void Fill(size_t n) noexcept;
-
-    void Rewind() noexcept;
 
     bool EndOfTape() noexcept;
 

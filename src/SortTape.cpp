@@ -1,105 +1,99 @@
 #include "../lib/SortTape.h"
 
-#include <thread>
 #include <exception>
+#include <algorithm>
+#include <ranges>
 
-void ToBinary(const std::filesystem::path &path, const std::filesystem::path &binary) {
-    std::ifstream ifstream(path, std::ios::in);
-    std::ofstream ofstream(binary, std::ios::out | std::ios::binary);
-    int32_t curr;
-    if (!ifstream.is_open()) {
-        throw std::ios::failure("No such input file: " + path.string());
-    }
-    while (ifstream >> curr) {
-        ofstream.write(reinterpret_cast<char *>(&curr), kIntSize);
-    }
-}
 
-void FromBinary(const std::filesystem::path &input, const std::filesystem::path &output) noexcept {
-    std::ifstream ifstream(input, std::ios::binary | std::ios::in);
-    std::ofstream ofstream(output, std::ios::out);
-    int32_t curr;
-
-    while (ifstream.read(reinterpret_cast<char *>(&curr), kIntSize)) {
-        ofstream << curr << " ";
-    }
-}
-
-void FileTape::Rewrite(int32_t num) noexcept {
-    std::this_thread::sleep_for(std::chrono::milliseconds(write_delay_));
-    auto curr_pos = file_tape_.tellg();
-    file_tape_.write(reinterpret_cast<char *>(&num), kIntSize);
-    file_tape_.seekg(curr_pos);
-}
-
-int32_t FileTape::Read() noexcept {
-    std::this_thread::sleep_for(std::chrono::milliseconds(read_delay_));
-    int32_t res;
-    auto curr_pos = file_tape_.tellg();
-    file_tape_.read(reinterpret_cast<char *>(&res), kIntSize);
-    file_tape_.seekg(curr_pos);
-    return res;
-}
-
-void FileTape::Forward() noexcept {
-    std::this_thread::sleep_for(std::chrono::milliseconds(move_delay_));
-    file_tape_.seekg(kIntSize, std::ios::cur);
-}
-
-void FileTape::Back() noexcept {
-    std::this_thread::sleep_for(std::chrono::milliseconds(move_delay_));
-    file_tape_.seekg(-static_cast<int64_t>(kIntSize), std::ios::cur);
-}
-
-size_t FileTape::GetSize() const noexcept {
-    return tape_size_;
-}
-
-FileTape::FileTape(const std::filesystem::path &path, size_t read_delay,
-                   size_t write_delay, size_t move_delay, size_t rewind_delay, bool is_input) : read_delay_(read_delay),
-                                                                                                write_delay_(
-                                                                                                        write_delay),
-                                                                                                move_delay_(move_delay),
-                                                                                                rewind_delay_(
-                                                                                                        rewind_delay) {
-    if (!is_input) {
-        file_tape_ = std::fstream(path, std::ios::out |
-                                        std::ios::binary |
-                                        std::ios::in |
-                                        std::ios::trunc);
-        return;
-    }
-    file_tape_ = std::fstream(path, std::ios::ate | std::ios::binary | std::ios::in);
-    if (!file_tape_.is_open()) {
-        throw std::ios::failure("file cannot be opened: " + path.string());
-    }
-    tape_size_ = file_tape_.tellg() / kIntSize;
-    file_tape_.seekg(std::ios::beg);
-}
-
-void FileTape::Fill(size_t n) noexcept {
-    int32_t zero = 0;
-    for (size_t i = 0; i < n; ++i) {
-        file_tape_.write(reinterpret_cast<char *>(&zero), kIntSize);
-    }
-    tape_size_ = n;
-    file_tape_.seekg(std::ios::beg);
-}
-
-void FileTape::ForwardBy(bool forward) noexcept {
-    if (forward) {
-        Forward();
-    } else {
-        Back();
-    }
-}
-
-[[maybe_unused]] void FileTape::Rewind() noexcept {
-    std::this_thread::sleep_for(std::chrono::milliseconds(rewind_delay_));
-    file_tape_.seekg(std::ios::beg);
+SortTape::SortTape(const std::filesystem::path &input_tape, const std::filesystem::path &output_tape, size_t read_delay,
+                   size_t write_delay, size_t move_delay, size_t rewind_delay, size_t memory) :
+        input_tape_(input_tape, read_delay, write_delay, move_delay, rewind_delay, true),
+        output_tape_(output_tape, read_delay, write_delay, move_delay, rewind_delay),
+        max_memory_(std::min(memory, input_tape_.GetSize())),
+        current_chunk_(max_memory_) {
 }
 
 void SortTape::Sort() {
+    if (max_memory_ == 0) {
+        SortWithoutMemory();
+        return;
+    }
+    size_t input_size = input_tape_.GetSize();
+    output_tape_.Fill(input_size);
+    size_t chunk_count = (input_size + max_memory_ - 1) / max_memory_;
+    for (size_t i = 0; i < chunk_count; ++i) {
+        auto size = std::min(max_memory_, input_size - i * max_memory_);
+        auto view = current_chunk_ | std::views::take(size);
+        for (auto& num : view) {
+            num = input_tape_.Read();
+            input_tape_.Forward();
+        }
+        std::ranges::sort(view);
+        SaveCurrentChunk(view, i, size);
+    }
+    Merge();
+}
+
+void SortTape::Merge() noexcept {
+    size_t input_size = input_tape_.GetSize();
+    size_t chunk_count = (input_size + max_memory_ - 1) / max_memory_;
+    if (chunk_count == 1) {
+        std::filesystem::copy_file(temp_tapes_[0].GetPath(), output_tape_.GetPath(),
+                                   std::filesystem::copy_options::overwrite_existing);
+        return;
+    }
+
+    auto first = MergeTapes(temp_tapes_[0], temp_tapes_[1], 1);
+    for (size_t i = 2; i < chunk_count; ++i) {
+        first = MergeTapes(first, temp_tapes_[i], i);
+    }
+
+    std::filesystem::copy_file(first.GetPath(), output_tape_.GetPath(),
+                               std::filesystem::copy_options::overwrite_existing);
+    std::filesystem::remove_all(util::kTempDir);
+}
+
+FileTape SortTape::MergeTapes(FileTape &lhs, FileTape &rhs, size_t i) noexcept {
+    FileTape merged = FileTape::Create(util::kTempDir / ("merged_" + std::to_string(i) + util::kExtension), lhs,
+                                       lhs.GetSize() + rhs.GetSize());
+    int32_t left;
+    int32_t right;
+    while (!lhs.EndOfTape() && !rhs.EndOfTape()) {
+        left = lhs.Read();
+        right = rhs.Read();
+        if (left < right) {
+            merged.Rewrite(left);
+            lhs.Forward();
+        } else {
+            merged.Rewrite(right);
+            rhs.Forward();
+        }
+        merged.Forward();
+    }
+    while (!lhs.EndOfTape()) {
+        merged.Rewrite(lhs.Read());
+        merged.Forward();
+        lhs.Forward();
+    }
+    while (!rhs.EndOfTape()) {
+        merged.Rewrite(rhs.Read());
+        merged.Forward();
+        rhs.Forward();
+    }
+    merged.Rewind();
+    return merged;
+}
+
+void SortTape::SwapBy(bool forward) {
+    int32_t curr = output_tape_.Read();
+    output_tape_.ForwardBy(!forward);
+    int32_t other = output_tape_.Read();
+    output_tape_.Rewrite(curr);
+    output_tape_.ForwardBy(forward);
+    output_tape_.Rewrite(other);
+}
+
+void SortTape::SortWithoutMemory() {
     output_tape_.Fill(input_tape_.GetSize());
     int32_t curr;
     int64_t prev;
@@ -109,11 +103,12 @@ void SortTape::Sort() {
         input_tape_.Forward();
     }
     output_tape_.Back();
+    int64_t output_size = output_tape_.GetSize();
     bool forward = false;
-    for (size_t i = 0; i < output_tape_.GetSize(); ++i) {
+    for (size_t i = 1; i < output_size; ++i) {
         prev = output_tape_.Read();
         bool is_sorted = true;
-        for (size_t j = 1; j < output_tape_.GetSize(); ++j) {
+        for (size_t j = 1; j < output_size; ++j) {
             output_tape_.ForwardBy(forward);
             curr = output_tape_.Read();
             if (curr < prev && forward || curr > prev && !forward) {
@@ -129,11 +124,12 @@ void SortTape::Sort() {
     }
 }
 
-void SortTape::SwapBy(bool forward) {
-    int32_t curr = output_tape_.Read();
-    output_tape_.ForwardBy(!forward);
-    int32_t other = output_tape_.Read();
-    output_tape_.Rewrite(curr);
-    output_tape_.ForwardBy(forward);
-    output_tape_.Rewrite(other);
+void SortTape::SaveCurrentChunk(auto& view, size_t i, size_t size) noexcept {
+    FileTape temp_tape = FileTape::Create(util::GetTempPath(i), input_tape_, size);
+    for (auto num : view) {
+        temp_tape.Rewrite(num);
+        temp_tape.Forward();
+    }
+    temp_tape.Rewind();
+    temp_tapes_.push_back(std::move(temp_tape));
 }

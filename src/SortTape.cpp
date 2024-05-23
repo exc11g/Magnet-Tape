@@ -25,7 +25,7 @@ void SortTape::Sort() {
     for (size_t i = 0; i < chunk_count; ++i) {
         auto size = std::min(max_memory_, input_size - i * max_memory_);
         auto view = current_chunk_ | std::views::take(size);
-        for (auto& num : view) {
+        for (auto &num: view) {
             num = input_tape_.Read();
             input_tape_.Forward();
         }
@@ -111,9 +111,9 @@ void SortTape::SortWithoutMemory() {
     }
 }
 
-void SortTape::SaveCurrentChunk(auto& view, size_t i, size_t size) noexcept {
+void SortTape::SaveCurrentChunk(auto &view, size_t i, size_t size) noexcept {
     FileTape temp_tape = FileTape::Create(util::GetTempPath(i), input_tape_, size);
-    for (auto num : view) {
+    for (auto num: view) {
         temp_tape.Rewrite(num);
         temp_tape.Forward();
     }

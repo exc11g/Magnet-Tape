@@ -4,25 +4,26 @@ Magnet-Tape is a simple magnetic tape simulation program designed to sort intege
 
 ## Command Line Arguments
 
-The program accepts three command line arguments:
+Usage: MyExecutable [options]
 
-1. **input**: Path to the input file containing integers.
-2. **output**: Path to the output file where the sorted integers will be written.
-3. **config**: Path to the configuration file that specifies the delays for various tape operations.
-
-### Example Usage
+Options:
+**-h [ --help ]**         Show help message
+**-i [ --input ]** arg    Path to the input file containing space-separated **int32_t** numbers  
+**-o [ --output ]** arg   Path to the output file where sorted numbers will be saved  
+**-c [ --config ]** arg   Path to the config file containing five integers  
+### Example of running program
 
 ```sh
-./magnet_tape input.txt output.txt config.txt
+./magnet-tape --input ../input.txt --output ../output.txt --config ../config.txt
 ```
 
 ### Input File
-```angular2html
+```sh
 34 7 23 32 5 62
 ```
 
 ### Output File
-```angular2html
+```sh
 5 7 23 32 34 62
 ```
 
@@ -38,7 +39,7 @@ The configuration file should contain exactly four integers, each on a new line,
 
 ### Example Configuration file
 
-```angular2html
+```sh
 10
 15
 5
@@ -46,8 +47,19 @@ The configuration file should contain exactly four integers, each on a new line,
 1000
 ```
 
-### Example of running program
+### Usage or testing
+#### Requirements:
 
-```angular2html
-./magnet-tape ../input.txt ../output.txt ../config.txt
+- **Boost** version 1.74 or higher  
+- **Catch2** version 2.x
+
+#### Build
+```shell
+mkdir build && cd build
+cmake ..
+make tests # For testing
+make tatlin
+./tests
+./tatlin *args*
 ```
+

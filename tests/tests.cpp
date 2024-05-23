@@ -24,7 +24,7 @@ namespace {
         std::filesystem::create_directory(util::kTempDir);
         std::filesystem::create_directory(kTestDir);
         std::fstream stream(kTestDir / "input.txt", std::ios::out);
-        std::ranges::for_each(v, [&stream](auto x){
+        std::ranges::for_each(v, [&stream](auto x) {
             stream << x << " ";
         });
         stream.close();
@@ -73,9 +73,9 @@ namespace {
         auto size = GENERATE(take(10, random(0, 50)));
         auto v = chunk(size, random(kIntMin, kIntMax)).get();
         auto start = Now();
-        Check(v, 5, 1, 1, 1, 300);
+        Check(v, 50, 1, 1, 1, 300);
         auto end = Now();
-        REQUIRE((end - start) / 1ms > 5 * size);
+        REQUIRE((end - start) / 1ms > 50 * size);
     }
 
     TEST_CASE("ALL DELAYS") {

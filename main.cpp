@@ -2,18 +2,35 @@
 #include <vector>
 #include <tuple>
 
+#include <boost/program_options.hpp>
+
 #include "lib/Util.h"
 #include "lib/SortTape.h"
 
-void
-ReadArgs(int argc, char **argv, std::filesystem::path &in,
-         std::filesystem::path &out, std::filesystem::path &cfg) {
-    if (argc != 4) {
-        throw std::invalid_argument("Wrong number of arguments, expected 4");
+namespace po = boost::program_options;
+
+auto ReadArgs(int argc, char **argv) {
+    std::filesystem::path in, out, cfg;
+    po::options_description cmd_options("CMD options");
+    cmd_options.add_options()
+            ("help,h", "produce help message")
+            ("input,i", po::value<std::filesystem::path>(), "get input tape")
+            ("output,o", po::value<std::filesystem::path>(), "get output tape")
+            ("config,c", po::value<std::filesystem::path>(), "get config file");
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, cmd_options), vm);
+    po::notify(vm);
+    if (vm.contains("help")) {
+        std::cout << util::kHelpMessage << std::endl;
     }
-    in = argv[1];
-    out = argv[2];
-    cfg = argv[3];
+    try {
+        in = vm["input"].as<std::filesystem::path>();
+        out = vm["output"].as<std::filesystem::path>();
+        cfg = vm["config"].as<std::filesystem::path>();
+    } catch (...) {
+        throw std::invalid_argument("Not enough arguments, use --help for more information");
+    }
+    return std::tuple(in, out, cfg);
 }
 
 auto ReadConfig(const std::filesystem::path &path) {
@@ -33,9 +50,7 @@ std::filesystem::path GetBinaryPath(const std::filesystem::path &path) {
 }
 
 int main(int argc, char **argv) {
-    std::filesystem::path input_path, output_path, config;
-
-    ReadArgs(argc, argv, input_path, output_path, config);
+    auto [input_path, output_path, config] = ReadArgs(argc, argv);
     auto [read_delay, write_delay, move_delay, rewind_delay, memory] = ReadConfig(config);
 
     std::filesystem::create_directory(util::kTempDir);
@@ -52,7 +67,7 @@ int main(int argc, char **argv) {
                           write_delay,
                           move_delay,
                           rewind_delay,
-                          (memory + util::kIntSize - 1) / util::kIntSize);
+                          memory / util::kIntSize);
         sortTape.Sort();
     }
 

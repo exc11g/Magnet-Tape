@@ -27,7 +27,8 @@ private:
 
     static FileTape MergeTapes(FileTape &lhs, FileTape &&rhs, size_t i) noexcept;
 
-    void SaveCurrentChunk(auto& view, size_t i, size_t size) noexcept;
+    void SaveCurrentChunk(auto &view, size_t i, size_t size) noexcept;
+
     FileTape input_tape_;
     FileTape output_tape_;
     size_t max_memory_;

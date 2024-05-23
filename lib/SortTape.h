@@ -17,22 +17,22 @@ public:
 
     void Sort();
 
+private:
+
     void SortWithoutMemory();
 
     void SwapBy(bool forward);
 
     void Merge() noexcept;
 
-    static FileTape MergeTapes(FileTape &lhs, FileTape &rhs, size_t i) noexcept;
+    static FileTape MergeTapes(FileTape &lhs, FileTape &&rhs, size_t i) noexcept;
 
     void SaveCurrentChunk(auto& view, size_t i, size_t size) noexcept;
-
-private:
     FileTape input_tape_;
     FileTape output_tape_;
     size_t max_memory_;
     std::vector<int32_t> current_chunk_;
-    std::vector<FileTape> temp_tapes_;
+    std::filesystem::path output_path_;
 };
 
 #endif //TATLIN_SORTTAPE_H

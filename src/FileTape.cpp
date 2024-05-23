@@ -32,7 +32,8 @@ size_t FileTape::GetSize() const noexcept {
 }
 
 FileTape::FileTape(const std::filesystem::path &path, size_t read_delay,
-                   size_t write_delay, size_t move_delay, size_t rewind_delay, bool is_input) : read_delay_(read_delay),
+                   size_t write_delay, size_t move_delay, size_t rewind_delay, bool is_input) : tape_size_(0),
+                                                                                                read_delay_(read_delay),
                                                                                                 write_delay_(
                                                                                                         write_delay),
                                                                                                 move_delay_(move_delay),

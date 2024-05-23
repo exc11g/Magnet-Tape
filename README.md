@@ -6,8 +6,8 @@ Magnet-Tape is a simple magnetic tape simulation program designed to sort intege
 
 Usage: MyExecutable [options]
 
-Options:
-**-h [ --help ]**         Show help message
+Options:  
+**-h [ --help ]**         Show help message  
 **-i [ --input ]** arg    Path to the input file containing space-separated **int32_t** numbers  
 **-o [ --output ]** arg   Path to the output file where sorted numbers will be saved  
 **-c [ --config ]** arg   Path to the config file containing five integers  

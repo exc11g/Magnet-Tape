@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_MAIN
 
-#include "../lib/SortTape.h"
-
 #include <catch2/catch.hpp>
+
+#include "../lib/SortTape.h"
 
 using Catch::Generators::chunk;
 using Catch::Generators::random;
@@ -15,23 +15,30 @@ namespace {
     constexpr auto kIntMax = std::numeric_limits<int32_t>::max();
     constexpr auto kIntMin = std::numeric_limits<int32_t>::min();
 
-    void Check(std::vector<int32_t> &v, size_t read = 1, size_t write = 1, size_t move = 1, size_t rewind = 1) {
+    auto Now() {
+        return std::chrono::steady_clock::now();
+    }
+
+    void Check(std::vector<int32_t> &v, size_t read = 1, size_t write = 1, size_t move = 1, size_t rewind = 1,
+               size_t memory = 1) {
+        std::filesystem::create_directory(util::kTempDir);
         std::filesystem::create_directory(kTestDir);
         std::fstream stream(kTestDir / "input.txt", std::ios::out);
         for (auto x: v) {
             stream << x << " ";
         }
         stream.close();
-        ToBinary(kTestDir / "input.txt", kTestDir / "input_binary.tape");
+        util::ToBinary(kTestDir / "input.txt", kTestDir / "input_binary.tape");
         {
             SortTape sortTape(kTestDir / "input_binary.tape", kTestDir / "output_binary.tape",
                               read,
                               write,
                               move,
-                              rewind);
+                              rewind,
+                              memory / util::kIntSize);
             sortTape.Sort();
         }
-        FromBinary(kTestDir / "output_binary.tape", kTestDir / "output.txt");
+        util::FromBinary(kTestDir / "output_binary.tape", kTestDir / "output.txt");
         std::vector<int32_t> res;
         int32_t curr;
         std::fstream out(kTestDir / "output.txt", std::ios::in);
@@ -40,6 +47,8 @@ namespace {
         }
         std::sort(v.begin(), v.end());
         std::filesystem::remove_all(kTestDir);
+        std::filesystem::remove_all(util::kTempDir);
+
         REQUIRE(v == res);
     }
 
@@ -55,30 +64,36 @@ namespace {
     }
 
     TEST_CASE("RANDOM") {
-        auto size = GENERATE(take(5, random(0, 10)));
+        auto size = GENERATE(take(5, random(0, 30)));
         auto v = chunk(size, random(kIntMin, kIntMax)).get();
-        Check(v);
+        Check(v, 1, 1, 1, 1, 300);
     }
 
     TEST_CASE("READ DELAY") {
-        auto size = GENERATE(take(10, random(0, 20)));
+        auto size = GENERATE(take(10, random(0, 50)));
         auto v = chunk(size, random(kIntMin, kIntMax)).get();
-        auto start = std::chrono::steady_clock::now();
-        Check(v, 5);
-        auto end = std::chrono::steady_clock::now();
-        REQUIRE((end - start) / 1ms > 5 * size * size);
+        auto start = Now();
+        Check(v, 5, 1, 1, 1, 300);
+        auto end = Now();
+        REQUIRE((end - start) / 1ms > 5 * size);
     }
 
     TEST_CASE("ALL DELAYS") {
-        auto size = GENERATE(take(10, random(0, 10)));
+        auto size = GENERATE(take(10, random(0, 30)));
         auto v = chunk(size, random(kIntMin, kIntMax)).get();
-        auto start = std::chrono::steady_clock::now();
-        Check(v, 5, 10, 15, 20);
-        auto end = std::chrono::steady_clock::now();
-        REQUIRE((end - start) / 1ms > (5 + 15) * size * size + 15 * size);
+        auto start = Now();
+        Check(v, 5, 10, 15, 20, 300);
+        auto end = Now();
+        REQUIRE((end - start) / 1ms > (5 + 15) * size + 15 * size);
     }
 
     TEST_CASE("NO FILES") {
-        CHECK_THROWS(ToBinary("nofile.xxx", "skdaks.txt"));
+        CHECK_THROWS(util::ToBinary("nofile.xxx", "skdaks.txt"));
+    }
+
+    TEST_CASE("MANY CHUNKS") {
+        auto size = GENERATE(take(10, random(0, 100)));
+        auto v = chunk(size, random(kIntMin, kIntMax)).get();
+        Check(v, 1, 1, 1, 1, 30);
     }
 }

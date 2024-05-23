@@ -2,10 +2,8 @@
 #include <vector>
 #include <tuple>
 
+#include "lib/Util.h"
 #include "lib/SortTape.h"
-
-const std::filesystem::path kTempDir = "./tmp/";
-const std::string kExtension = "_binary.tape";
 
 void
 ReadArgs(int argc, char **argv, std::filesystem::path &in,
@@ -24,14 +22,14 @@ auto ReadConfig(const std::filesystem::path &path) {
         throw std::ios::failure("Cannot read config file");
     }
     size_t read, write, move, rewind, memory;
-    if (!(config >> read >> write >> move >> rewind)) {
+    if (!(config >> read >> write >> move >> rewind >> memory)) {
         throw std::invalid_argument("Not enough params in config file, expected 4");
     }
     return std::tuple(read, write, move, rewind, memory);
 }
 
 std::filesystem::path GetBinaryPath(const std::filesystem::path &path) {
-    return kTempDir / (path.stem().string() + kExtension);
+    return util::kTempDir / (path.stem().string() + util::kExtension);
 }
 
 int main(int argc, char **argv) {
@@ -40,13 +38,13 @@ int main(int argc, char **argv) {
     ReadArgs(argc, argv, input_path, output_path, config);
     auto [read_delay, write_delay, move_delay, rewind_delay, memory] = ReadConfig(config);
 
-    std::filesystem::create_directory(kTempDir);
+    std::filesystem::create_directory(util::kTempDir);
     std::filesystem::create_directories(output_path.parent_path());
 
     std::filesystem::path input_binary = GetBinaryPath(input_path);
     std::filesystem::path output_binary = GetBinaryPath(output_path);
 
-    ToBinary(input_path, input_binary);
+    util::ToBinary(input_path, input_binary);
     {
         SortTape sortTape(input_binary,
                           output_binary,
@@ -54,12 +52,12 @@ int main(int argc, char **argv) {
                           write_delay,
                           move_delay,
                           rewind_delay,
-                          memory / kIntSize);
+                          (memory + util::kIntSize - 1) / util::kIntSize);
         sortTape.Sort();
     }
 
-    FromBinary(output_binary, output_path);
+    util::FromBinary(output_binary, output_path);
 
-    std::filesystem::remove_all(kTempDir);
+    std::filesystem::remove_all(util::kTempDir);
     return 0;
 }

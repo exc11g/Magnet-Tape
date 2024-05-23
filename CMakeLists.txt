@@ -7,6 +7,17 @@ add_executable(magnet_tape
         lib/TapeInterface.h
         src/SortTape.cpp
         lib/SortTape.h
-        main.cpp)
+        main.cpp
+        src/Util.cpp
+        lib/Util.h
+        src/FileTape.cpp
+        lib/FileTape.h)
 
-add_executable(tests tests/tests.cpp lib/SortTape.h src/SortTape.cpp)
+add_executable(tests
+        tests/tests.cpp
+        lib/SortTape.h
+        src/SortTape.cpp
+        lib/Util.h
+        src/Util.cpp
+        lib/FileTape.h
+        src/FileTape.cpp)

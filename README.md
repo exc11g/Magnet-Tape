@@ -34,6 +34,7 @@ The configuration file should contain exactly four integers, each on a new line,
 2. **Write Delay**: The delay for writing an integer to the tape.
 3. **Move Delay**: The delay for moving the tape head from one position to the next.
 4. **Rewind Delay**: The delay for rewinding the tape to the beginning.
+5. **Memory**: Maximum memory usage.
 
 ### Example Configuration file
 
@@ -42,6 +43,7 @@ The configuration file should contain exactly four integers, each on a new line,
 15
 5
 20
+1000
 ```
 
 ### Example of running program
